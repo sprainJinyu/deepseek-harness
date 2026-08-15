@@ -391,10 +391,12 @@ function resolveModelCompat(
   route: PiAiCompatProfile | undefined,
   base: Model<Api> | undefined,
   api: string,
+  baseUrl?: string,
 ): { compat: OpenAICompletionsCompat } | Record<string, never> {
+  const isGoogle = baseUrl !== undefined && (baseUrl.includes('googleapis.com') || baseUrl.includes('google'));
   const thinkingFormat = entry.compat?.thinkingFormat ?? route?.thinkingFormat
   const supportsReasoningEffort = entry.compat?.supportsReasoningEffort ?? route?.supportsReasoningEffort
-  if (thinkingFormat === undefined && supportsReasoningEffort === undefined) return {}
+  if (thinkingFormat === undefined && supportsReasoningEffort === undefined && !isGoogle && entry.compat === undefined && route === undefined) return {}
   if (api !== 'openai-completions') {
     if (entry.compat?.thinkingFormat !== undefined || entry.compat?.supportsReasoningEffort !== undefined) {
       invalid(provider, `model "${entry.id}" sets compat reasoning switches, but its api is "${api}";`
@@ -412,6 +414,9 @@ function resolveModelCompat(
   return {
     compat: {
       ...inherited,
+      ...isGoogle ? { supportsStore: false, maxTokensField: 'max_tokens' as const, supportsDeveloperRole: false } : {},
+      ...route as Record<string, unknown>,
+      ...entry.compat as Record<string, unknown>,
       ...thinkingFormat === undefined ? {} : { thinkingFormat },
       ...supportsReasoningEffort === undefined ? {} : { supportsReasoningEffort },
     },
@@ -535,7 +540,7 @@ export function resolveRouteModels(request: RouteCatalogRequest): RouteCatalog {
       contextWindow,
       maxTokens,
       ...resolveModelReasoning(provider, entry, base),
-      ...resolveModelCompat(provider, entry, request.compat, base, api),
+      ...resolveModelCompat(provider, entry, request.compat, base, api, baseUrl),
     }
   })
   if (routeCompatDefined && !models.some(model => model.api === 'openai-completions')) {
