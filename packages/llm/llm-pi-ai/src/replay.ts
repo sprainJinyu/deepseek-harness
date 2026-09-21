@@ -151,7 +151,7 @@ function readReplayState(value: unknown): PiAiReplayState {
 
 /** Convert provider-neutral blocks without trusting them as same-model replay. */
 function foreignAssistant(message: Message): AssistantMessage {
-  const source = message.source.kind === 'model' ? message.source : undefined
+  const source = message.source?.kind === 'model' ? message.source : undefined
   const content: AssistantMessage['content'] = []
   for (const block of message.content) {
     switch (block.type) {
@@ -248,7 +248,7 @@ function replayedAssistant(message: Message, source: ModelMessageSource, rawStat
  */
 export function toPiAssistant(message: Message, onDegrade?: (reason: string) => void): AssistantMessage {
   const source = message.source
-  if (source.kind !== 'model' || source.replayState === undefined) return foreignAssistant(message)
+  if (source?.kind !== 'model' || source.replayState === undefined) return foreignAssistant(message)
   try {
     return replayedAssistant(message, source, source.replayState)
   } catch (error: unknown) {

@@ -467,6 +467,19 @@ describe('pi-ai request context conversion', () => {
     )).toThrow(/assistant image output/)
   })
 
+  it('converts an assistant message with absent source without crashing', () => {
+    const sourceless = {
+      role: 'assistant' as const,
+      content: [{ type: 'text' as const, text: 'sourceless answer' }],
+    } as Message
+    expect(toPiAssistant(sourceless)).toMatchObject({
+      role: 'assistant',
+      content: [{ type: 'text', text: 'sourceless answer' }],
+      api: 'dsh-foreign',
+      provider: 'dsh-foreign',
+      model: 'dsh-foreign',
+    })
+  })
 })
 
 describe('pi-ai system prompt source', () => {
