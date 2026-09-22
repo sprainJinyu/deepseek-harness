@@ -6,6 +6,7 @@
  */
 import type {
   ModelCatalogFailure, ModelProviderGroup, ModelSelection, ModelSelectionProjection,
+  SessionSelectModelValue,
 } from '@deepseek-ai/dsh-api-session-controller/types'
 import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
 import type { RemoteResult, TypertClientRemote } from '@deepseek-ai/dsh-typert-protocol'
@@ -90,14 +91,25 @@ export class ModelDirectory {
     this.assertAvailable()
     const generation = ++this.generation
     this.store.update((s) => { s.status = 'selecting'; s.error = null })
-    const result = await this.sessions.selectModel({
-      sessionId: this.sessionId,
-      provider: selection.provider,
-      model: selection.model,
-      ...selection.reasoningEffort === undefined
-        ? {}
-        : { reasoningEffort: selection.reasoningEffort },
-    })
+    let result: RemoteResult<SessionSelectModelValue>
+    try {
+      result = await this.sessions.selectModel({
+        sessionId: this.sessionId,
+        provider: selection.provider,
+        model: selection.model,
+        ...selection.reasoningEffort === undefined
+          ? {}
+          : { reasoningEffort: selection.reasoningEffort },
+      })
+    } catch (error) {
+      if (!this.disposed && generation === this.generation) {
+        this.store.update((s) => {
+          s.status = 'error'
+          s.error = error instanceof Error ? error.message : String(error)
+        })
+      }
+      throw error
+    }
     if (this.disposed || generation !== this.generation) {
       return result.ok ? { ok: true, value: undefined } : result
     }
