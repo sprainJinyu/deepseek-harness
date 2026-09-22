@@ -117,16 +117,33 @@ export function ModelSelect(
     load()
   }
 
+  // WKWebView (the desktop shell) does not focus buttons on mousedown, so a
+  // row click blurs the trigger with relatedTarget=null; closing on that blur
+  // unmounts the row before its click lands and the selection is swallowed.
+  // Remember that the in-flight mousedown started inside the component and
+  // let the click (or closeOutside) decide the outcome instead.
+  const downInsideRef = useRef(false)
   useEffect(() => {
     if (!open) return
+    const markDown = (event: MouseEvent): void => {
+      downInsideRef.current = rootRef.current?.contains(event.target as Node) === true
+        || menuRef.current?.contains(event.target as Node) === true
+    }
+    const clearDown = (): void => { downInsideRef.current = false }
     const closeOutside = (event: MouseEvent): void => {
       // The portaled card is outside the trigger subtree; check both.
       if (rootRef.current?.contains(event.target as Node) === true) return
       if (menuRef.current?.contains(event.target as Node) === true) return
       setOpen(false)
     }
+    document.addEventListener('mousedown', markDown, true)
     document.addEventListener('mousedown', closeOutside)
-    return () => { document.removeEventListener('mousedown', closeOutside) }
+    document.addEventListener('click', clearDown, true)
+    return () => {
+      document.removeEventListener('mousedown', markDown, true)
+      document.removeEventListener('mousedown', closeOutside)
+      document.removeEventListener('click', clearDown, true)
+    }
   }, [open])
 
   // A pane switch unmounts the row that had focus, which drops focus onto the
@@ -268,6 +285,9 @@ export function ModelSelect(
   }
 
   const onBlur = (event: FocusEvent<HTMLDivElement>): void => {
+    // A mousedown inside the component drops focus in engines that do not
+    // focus buttons (WKWebView); the click that follows owns the outcome.
+    if (downInsideRef.current) return
     if (event.relatedTarget instanceof Node && (
       rootRef.current?.contains(event.relatedTarget) === true
       || menuRef.current?.contains(event.relatedTarget) === true

@@ -446,3 +446,62 @@ describe('ModelSelect keyboard walk', () => {
     expect(document.activeElement).toBe(rows[0])
   })
 })
+
+describe('ModelSelect webview blur regression', () => {
+  // WKWebView (the desktop shell) does not focus buttons on mousedown, so a
+  // row click blurs the focus the keyboard hand-offs parked inside the card
+  // with relatedTarget=null. Engines that focus buttons never produce that
+  // blur. The card must let the click own the outcome, not the blur.
+  function mountTwoModels() {
+    const select = vi.fn().mockResolvedValue({ ok: true, value: undefined })
+    render(<ModelSelect
+      locked={false}
+      available
+      directory={createSnapshotStore(state({
+        groups: [{
+          id: 'deepseek-official',
+          name: 'DeepSeek',
+          models: [
+            { id: 'deepseek-v4-flash', name: 'DeepSeek-V4-Flash', description: 'fast', reasoning },
+            { id: 'deepseek-v4-pro', name: 'DeepSeek-V4-Pro', description: 'smart', reasoning },
+          ],
+        }],
+      }))}
+      load={vi.fn()}
+      select={select}
+      t={t}
+    />)
+    const trigger = screen.getByRole('button', { name: /选择模型/ })
+    fireEvent.click(trigger)
+    fireEvent.click(screen.getByRole('menuitem', { name: /^模型/ }))
+    return select
+  }
+
+  it('keeps the menu open and submits when an inside mousedown drops focus to null', async () => {
+    const select = mountTwoModels()
+    const target = screen.getAllByRole('menuitemradio')[1]!
+    // The webview's row click: mousedown inside the card, then a blur whose
+    // relatedTarget is null because the row never took focus.
+    fireEvent.mouseDown(target)
+    fireEvent.focusOut(document.activeElement instanceof HTMLElement ? document.activeElement : target, {
+      relatedTarget: null,
+    })
+    // The blur did not close the card, so the click still lands on a live row.
+    expect(screen.getByRole('menu')).toBeTruthy()
+    fireEvent.click(target)
+    await waitFor(() => expect(select).toHaveBeenCalledTimes(1))
+    expect(select.mock.calls[0]![0]).toMatchObject({
+      provider: 'deepseek-official',
+      model: 'deepseek-v4-pro',
+    })
+  })
+
+  it('still closes on a focus loss that no inside mousedown preceded', () => {
+    mountTwoModels()
+    // A plain focus walk out of the card (no click in flight) keeps closing it.
+    fireEvent.focusOut(document.activeElement instanceof HTMLElement ? document.activeElement : screen.getAllByRole('menuitemradio')[0]!, {
+      relatedTarget: null,
+    })
+    expect(screen.queryByRole('menu')).toBeNull()
+  })
+})
