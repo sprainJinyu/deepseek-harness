@@ -21,6 +21,7 @@ import type {
 } from '@deepseek-ai/dsh-client-ui-slots'
 import { computeColumns, RIGHTBAR_DEFAULT_RATIO, SIDEBAR_AUTO_COLLAPSE, SIDEBAR_COLLAPSED, SIDEBAR_DEFAULT } from './columns.ts'
 import { DocumentTitle } from './DocumentTitle.tsx'
+import { DesktopAttention } from './DesktopAttention.tsx'
 import type { createLayoutStore } from './stores.ts'
 import css from './AppFrame.module.css'
 
@@ -121,6 +122,7 @@ function DragHandle(props: { side: 'sidebar' | 'rightbar'; left: number; onStart
 export function AppFrame({
   useStore,
   useSessions,
+  useSessionStatus,
   usePanelInfo,
   actions,
   renderSlot,
@@ -222,6 +224,9 @@ export function AppFrame({
         productTitle={productTitle}
         useSessions={useSessions}
         usePanelInfo={usePanelInfo}
+      />
+      <DesktopAttention
+        useSessionStatus={useSessionStatus}
       />
       <div className={css.sidebarCol}>
         {sidebar}

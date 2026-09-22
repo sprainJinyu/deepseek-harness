@@ -17,6 +17,10 @@ const product: DshDesktopProductApi = {
       return () => { ipcRenderer.off(DESKTOP_IPC.updatesPresentation, handle) }
     },
   },
+  attention: {
+    notify: kind => ipcRenderer.invoke(DESKTOP_IPC.attentionNotify, kind) as Promise<void>,
+    clear: () => ipcRenderer.invoke(DESKTOP_IPC.attentionClear) as Promise<void>,
+  },
 }
 
 if (location.protocol === `${SCHEME}:` && location.hostname === 'app') {

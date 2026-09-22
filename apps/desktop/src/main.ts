@@ -39,6 +39,7 @@ import { DesktopMandatoryUpdateWindow } from './mandatory-update-window.ts'
 import { DesktopPolicyTestAuth } from './policy-test-auth.ts'
 import { DesktopUpdateDialog, type UpdateDialogOptions } from './update-dialog.ts'
 import { readDesktopRuntime } from './runtime-tree.ts'
+import { DesktopAttention } from './attention.ts'
 
 let focusPrimaryWindow = (): void => {}
 let stopForRecovery = async (): Promise<void> => {}
@@ -208,6 +209,7 @@ async function main(): Promise<void> {
   const locale = resolveDesktopLocale(app.getLocale())
   const messages = locale.messages
   const updateDialog = new DesktopUpdateDialog(fileURLToPath(new URL('./preload-update-dialog.cjs', import.meta.url)), locale)
+  const attention = new DesktopAttention()
   const isMandatory = (): boolean => mandatoryPolicy?.state.blocking === true
   const ordinaryMessageBox = async (options: UpdateDialogOptions): Promise<Electron.MessageBoxReturnValue> => {
     const controller = new AbortController()
@@ -454,6 +456,16 @@ async function main(): Promise<void> {
     assertProductSender(event)
     await openUpdatePrompt()
   })
+  ipcMain.handle(DESKTOP_IPC.attentionNotify, (event, kind: unknown) => {
+    assertProductSender(event)
+    if (mainWindow !== undefined && (kind === 'approval' || kind === 'finish')) {
+      attention.notify(kind, mainWindow)
+    }
+  })
+  ipcMain.handle(DESKTOP_IPC.attentionClear, (event) => {
+    assertProductSender(event)
+    attention.clear(mainWindow)
+  })
 
   let promptOperation: Promise<void> | undefined
   let policyAuthenticationQueued = false
@@ -659,6 +671,7 @@ async function main(): Promise<void> {
     const window = createWindow(appPreload, true, true)
     mainWindow = window
     window.on('focus', automaticCheck)
+    window.on('focus', () => { attention.clear(window) })
     window.on('closed', () => { if (mainWindow === window) mainWindow = undefined })
     window.webContents.on('did-fail-load', (_event, code, description, url, isMainFrame) => {
       if (isMainFrame && code !== -3 && !quitting && !window.isDestroyed()) {

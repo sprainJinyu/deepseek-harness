@@ -13,7 +13,12 @@ export const DESKTOP_IPC = {
   nativeThemeSet: 'dsh-desktop:native-theme-set',
   windowsAppearance: 'dsh-desktop:windows-appearance',
   windowsMenu: 'dsh-desktop:windows-menu',
+  attentionNotify: 'dsh-desktop:attention-notify',
+  attentionClear: 'dsh-desktop:attention-clear',
 } as const
+
+/** Attention reasons requested by the browser view. */
+export type DesktopAttentionKind = 'approval' | 'finish'
 
 /** Desktop release update state rendered by desktop-owned UI. */
 export type DesktopUpdatePreparationFailureKind = 'stop-failed' | 'tasks-changed' | 'tasks-unavailable'
@@ -57,6 +62,10 @@ export interface DshDesktopProductApi {
     status(): Promise<DesktopUpdatePresentation>
     open(): Promise<void>
     subscribe(listener: (state: DesktopUpdatePresentation) => void): () => void
+  }
+  readonly attention?: {
+    notify(kind: DesktopAttentionKind): Promise<void>
+    clear(): Promise<void>
   }
 }
 
