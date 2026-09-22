@@ -101,7 +101,13 @@ export async function serveStatic(
     res.end()
     return
   }
-  res.writeHead(200, { 'content-type': type })
+  // The index carries the per-plugin content-hash `rev` manifest that cache-busts
+  // the immutable module bundles, so it must never be served from a client cache:
+  // a stale index pins stale revs and thus stale (immutable) plugin code. Hashed
+  // assets keep their default caching; only HTML is forced fresh.
+  res.writeHead(200, type === HTML_MIME
+    ? { 'content-type': type, 'cache-control': 'no-store' }
+    : { 'content-type': type })
   res.end(body)
 }
 
