@@ -59,8 +59,9 @@ export function DesktopAttention({ useSessionStatus }: DesktopAttentionProps): n
     }
     prevRef.current = nextMap
 
-    // Only notify if document is in background (hidden)
-    if (document.hidden) {
+    // Only notify if window is in background (hidden or lost focus)
+    const isBackground = document.hidden || (typeof document.hasFocus === 'function' && !document.hasFocus())
+    if (isBackground) {
       if (hasNewApproval) {
         void carrier.attention.notify('approval')
       } else if (hasFinished) {
@@ -74,7 +75,8 @@ export function DesktopAttention({ useSessionStatus }: DesktopAttentionProps): n
     if (carrier?.attention === undefined) return
 
     const handleClear = () => {
-      if (!document.hidden) {
+      const isForeground = !document.hidden && (typeof document.hasFocus !== 'function' || document.hasFocus())
+      if (isForeground) {
         void carrier.attention?.clear()
       }
     }
